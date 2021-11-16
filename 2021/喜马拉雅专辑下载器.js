@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         喜马拉雅专辑下载器
-// @version      0.0.6
+// @version      0.0.7
 // @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，多线程下载，链接导出等功能，直接下载M4A文件。
 // @author       Priate
 // @match        *://www.ximalaya.com/*
@@ -284,6 +284,18 @@ padding: 4px;
                     }
                     result.push(music)
                 })
+                // 如果没有获取到数据,则判断为单个音频
+                if(result.length == 0 && location.pathname.split('/')[3]){
+                    const music = {
+                        id : location.pathname.split('/')[3],
+                        title : document.querySelector('h1.title-wrapper').innerText,
+                        isDownloading : false,
+                        isDownloaded : false,
+                        progress : 0,
+                        isSingle : true
+                    }
+                    result.push(music)
+                }
                 this.data = result
                 this.musicList = []
                 this.data.forEach((item)=>{
@@ -306,6 +318,7 @@ padding: 4px;
                         }
                     });
                 }
+                var setting;
                 if(!res){
                     const all_li = document.querySelectorAll('.sound-list>ul li');
                     for(var num = 0; num < all_li.length; num++) {
@@ -314,7 +327,6 @@ padding: 4px;
                         const id = item_a.href.split('/')[5]
                         if(id == item.id){
                             li.querySelector('div.all-icon').click()
-                            var setting;
                             while(!res){
                                 await Sleep(1)
                                 setting = GM_getValue('priate_script_xmly_data')
@@ -326,6 +338,17 @@ padding: 4px;
                             break
                         }
                     }
+                }
+                if(!res && item.isSingle){
+                    document.querySelector('div.play-btn').click()
+                    while(!res){
+                        await Sleep(1)
+                        setting = GM_getValue('priate_script_xmly_data')
+                        res = setting.manualMusicURL
+                    }
+                    setting.manualMusicURL = null
+                    GM_setValue('priate_script_xmly_data', setting)
+                    document.querySelector('div.play-btn').click()
                 }
                 this.$set(item, 'url', res)
                 return res
