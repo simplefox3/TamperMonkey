@@ -11,7 +11,7 @@
 // @grant        GM_setClipboard
 // @grant        GM_download
 // @icon         https://www.ximalaya.com/favicon.ico
-// @require      https://cdn.jsdelivr.net/npm/vue
+// @require      https://cdn.jsdelivr.net/npm/vue@2
 // @require      https://cdn.jsdelivr.net/npm/sweetalert@2.1.2/dist/sweetalert.min.js
 // @require https://cdn.bootcss.com/jquery/3.3.1/jquery.js
 // @require https://greasyfork.org/scripts/435476-priate-lib/code/Priate%20Lib.js?version=987980
