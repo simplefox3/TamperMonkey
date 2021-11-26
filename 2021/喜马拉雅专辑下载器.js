@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         喜马拉雅专辑下载器
-// @version      0.0.7
+// @version      0.0.8
 // @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，多线程下载，链接导出等功能，直接下载M4A文件。
 // @author       Priate
 // @match        *://www.ximalaya.com/*
@@ -82,7 +82,7 @@
         priate_script_div.innerHTML = `
 <div id="priate_script_div">
 <div>
-<b style='font-size:30px; margin: 0 0'>喜马拉雅下载器</b><p style='margin: 0 0'>by Priate</p>
+<b style='font-size:30px; margin: 0 0'>喜马拉雅下载器</b><p style='margin: 0 0'>by <a href="https://donate.virts.app/#sponsor" target="_blank" style='color:#337ab7'>Priate</a></p>
 <button v-show="!isDownloading" @click="loadMusic">{{filterData.length > 0 ? '重载数据' : '加载数据'}}</button>
 <button id='readme' @click="downloadAllMusics" v-show="!isDownloading && (musicList.length > 0)">下载所选</button>
 <button @click="copyAllMusicURL" v-show="!isDownloading && (musicList.length > 0)">导出地址</button>
