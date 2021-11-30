@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         喜马拉雅专辑下载器
-// @version      1.0.0
+// @version      1.0.1
 // @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，多线程下载，链接导出等功能，直接下载M4A文件。
 // @author       Priate
 // @match        *://www.ximalaya.com/*
@@ -13,8 +13,9 @@
 // @icon         https://www.ximalaya.com/favicon.ico
 // @require      https://cdn.jsdelivr.net/npm/vue@2
 // @require      https://cdn.jsdelivr.net/npm/sweetalert@2.1.2/dist/sweetalert.min.js
-// @require https://cdn.bootcss.com/jquery/3.3.1/jquery.js
-// @require https://greasyfork.org/scripts/435476-priate-lib/code/Priate%20Lib.js?version=987980
+// @require      https://cdn.bootcss.com/jquery/3.3.1/jquery.js
+// @require      https://greasyfork.org/scripts/435476-priate-lib/code/Priate%20Lib.js?version=987980
+// @require      https://unpkg.com/ajax-hook@2.0.3/dist/ajaxhook.min.js
 // @license MIT
 // @namespace https://greasyfork.org/users/219866
 // ==/UserScript==
@@ -24,8 +25,8 @@
 
     // 用户自定义设置
     const global_setting = {
-        // 多线程下载
-        multithreading : false
+        // 多线程下载(此选项已废弃,设置无效)
+        multithreading : false,
     }
 
     function initSetting(){
@@ -37,10 +38,12 @@
                 left : 20,
                 top : 100,
                 manualMusicURL : null,
+                quality : 1
             })
         }
         setting = GM_getValue('priate_script_xmly_data')
-        setting.multithreading = global_setting.multithreading
+        //后期添加内容
+        if(setting.quality !== 0) setting.quality = setting.quality || 1;
         GM_setValue('priate_script_xmly_data', setting)
     }
 
@@ -82,7 +85,7 @@
         priate_script_div.innerHTML = `
 <div id="priate_script_div">
 <div>
-<b style='font-size:30px; margin: 0 0'>喜马拉雅下载器</b><p style='margin: 0 0'>by <a href="https://donate.virts.app/#sponsor" target="_blank" style='color:#337ab7'>Priate</a></p>
+<b style='font-size:30px; margin: 0 0'>喜马拉雅下载器</b><p style='margin: 0 0'>by <a href="https://donate.virts.app/#sponsor" target="_blank" style='color:#337ab7'>Priate</a> | v<a href="//greasyfork.org/zh-CN/scripts/435495" target="_blank" style='color:#337ab7'>1.0.0</a> | 音质 : <a @click='changeQuality' style='color:#337ab7'>{{qualityStr}}</a> </p>
 <button v-show="!isDownloading" @click="loadMusic">{{filterData.length > 0 ? '重载数据' : '加载数据'}}</button>
 <button id='readme' @click="downloadAllMusics" v-show="!isDownloading && (musicList.length > 0)">下载所选</button>
 <button @click="copyAllMusicURL" v-show="!isDownloading && (musicList.length > 0)">导出地址</button>
@@ -115,7 +118,7 @@ background-color: rgba(240, 223, 175, 0.9);
 color : #660000;
 text-align : center;
 padding: 10px;
-z-index : 2147483647;
+z-index : 9999;
 border-radius : 20px;
 border:2px solid black;
 }
@@ -206,6 +209,19 @@ background-color: #fff;
 border:1px solid #000000;
 padding: 4px;
 }
+/*swal按钮*/
+.swal-button--low{
+background-color: #FFFAEB !important;
+color: #946C00;
+}
+.swal-button--high{
+background-color: #ebfffc !important;
+color: #00947e;
+}
+.swal-button--mid{
+background-color: #ECF6FD !important;
+color: #55ACEE;
+}
 `);
         document.querySelector("html").appendChild(priate_script_div)
         var setting = GM_getValue('priate_script_xmly_data')
@@ -236,6 +252,41 @@ padding: 4px;
             this.style.cursor = "default";
         };
     };
+    // 初始化音质修改
+    function initQuality(){
+        ah.proxy({
+            onRequest: (config, handler) => {
+                if (config.url.indexOf("audiopay.cos.tx.xmcdn.com") != -1) {
+                    console.log(config.url)
+                }
+                handler.next(config);
+            },
+            onError: (err, handler) => {
+                handler.next(err)
+            },
+            onResponse: (response, handler) => {
+                if (response.config.url.indexOf("mobile.ximalaya.com/mobile-playpage/track/v3/baseInfo") != -1) {
+                    const setting = GM_getValue('priate_script_xmly_data')
+                    const data = JSON.parse(response.response)
+                    const playUrlList = data.trackInfo.playUrlList
+                    var replaceUrl;
+                    for(var num = 0; num < playUrlList.length; num++) {
+                        var item = playUrlList[num]
+                        if(item.qualityLevel == setting.quality){
+                            replaceUrl = item.url
+                            break
+                        }
+                    }
+                    replaceUrl && playUrlList.forEach((item)=>{
+                        item.url = replaceUrl
+                    })
+                    response.response = JSON.stringify(data)
+                }
+                handler.next(response)
+            }
+        })
+        unsafeWindow.XMLHttpRequest = XMLHttpRequest
+    }
 
     // 获取当前时间
     function getNowFormatDate() {
@@ -258,6 +309,98 @@ padding: 4px;
     initSetting()
     //注入脚本div
     injectDiv()
+    // 初始化音质修改
+    initQuality()
+
+    // 第一种获取musicURL的方式，任意用户均可获得
+    async function getSimpleMusicURL1(item){
+        var res = null
+        if(item.url){
+            res = item.url
+        }else{
+            const timestamp = Date.parse(new Date());
+            var url = `https://mobwsa.ximalaya.com/mobile-playpage/playpage/tabs/${item.id}/${timestamp}`
+            $.ajax({
+                type: 'get',
+                url: url,
+                async: false,
+                dataType : "json",
+                success: function (resp) {
+                    if(resp.ret === 0){
+                        const setting = GM_getValue('priate_script_xmly_data')
+                        const trackInfo = resp.data.playpage.trackInfo;
+                        console.log(trackInfo)
+                        if(setting.quality == 0){
+                            res = trackInfo.playUrl32
+                        }else{
+                            res = trackInfo.playUrl64
+                        }
+                        res = res || trackInfo.downloadUrl
+                    }
+                }
+            });
+        }
+        return res
+    }
+    // 第二种获取musicURL的方式，任意用户均可获得
+    async function getSimpleMusicURL2(item){
+        var res = null
+        if(item.url){
+            res = item.url
+        }else{
+            var url = `https://www.ximalaya.com/revision/play/v1/audio?id=${item.id}&ptype=1`
+            $.ajax({
+                type: 'get',
+                url: url,
+                async: false,
+                dataType : "json",
+                success: function (resp) {
+                    if(resp.ret == 200) res = resp.data.src;
+                }
+            });
+        }
+        return res
+    }
+
+    //获取任意音频方法
+    async function getAllMusicURL1(item){
+        var res = null
+        var setting;
+        if(item.url){
+            res = item.url
+        }else{
+            const all_li = document.querySelectorAll('.sound-list>ul li');
+            for(var num = 0; num < all_li.length; num++) {
+                var li = all_li[num]
+                const item_a = li.querySelector('a');
+                const id = item_a.href.split('/')[item_a.href.split('/').length - 1]
+                if(id == item.id){
+                    li.querySelector('div.all-icon').click()
+                    while(!res){
+                        await Sleep(1)
+                        setting = GM_getValue('priate_script_xmly_data')
+                        res = setting.manualMusicURL
+                    }
+                    setting.manualMusicURL = null
+                    GM_setValue('priate_script_xmly_data', setting)
+                    li.querySelector('div.all-icon').click()
+                    break
+                }
+            }
+        }
+        if(!res && item.isSingle){
+            document.querySelector('div.play-btn').click()
+            while(!res){
+                await Sleep(1)
+                setting = GM_getValue('priate_script_xmly_data')
+                res = setting.manualMusicURL
+            }
+            setting.manualMusicURL = null
+            GM_setValue('priate_script_xmly_data', setting)
+            document.querySelector('div.play-btn').click()
+        }
+        return res
+    }
     // 处理数据等逻辑
     var vm = new Vue({
         el: '#priate_script_div',
@@ -303,53 +446,9 @@ padding: 4px;
                 })
             },
             async getMusicURL(item){
-                var res = null
-                if(item.url){
-                    res = item.url
-                }else{
-                    var url = `https://www.ximalaya.com/revision/play/v1/audio?id=${item.id}&ptype=1`
-                    $.ajax({
-                        type: 'get',
-                        url: url,
-                        async: false,
-                        dataType : "json",
-                        success: function (data) {
-                            if(data.ret == 200) res = data.data.src;
-                        }
-                    });
-                }
-                var setting;
-                if(!res){
-                    const all_li = document.querySelectorAll('.sound-list>ul li');
-                    for(var num = 0; num < all_li.length; num++) {
-                        var li = all_li[num]
-                        const item_a = li.querySelector('a');
-                        const id = item_a.href.split('/')[item_a.href.split('/').length - 1]
-                        if(id == item.id){
-                            li.querySelector('div.all-icon').click()
-                            while(!res){
-                                await Sleep(1)
-                                setting = GM_getValue('priate_script_xmly_data')
-                                res = setting.manualMusicURL
-                            }
-                            setting.manualMusicURL = null
-                            GM_setValue('priate_script_xmly_data', setting)
-                            li.querySelector('div.all-icon').click()
-                            break
-                        }
-                    }
-                }
-                if(!res && item.isSingle){
-                    document.querySelector('div.play-btn').click()
-                    while(!res){
-                        await Sleep(1)
-                        setting = GM_getValue('priate_script_xmly_data')
-                        res = setting.manualMusicURL
-                    }
-                    setting.manualMusicURL = null
-                    GM_setValue('priate_script_xmly_data', setting)
-                    document.querySelector('div.play-btn').click()
-                }
+                var res = await getSimpleMusicURL1(item)
+                res = res || await getSimpleMusicURL2(item)
+                res = res || await getAllMusicURL1(item)
                 this.$set(item, 'url', res)
                 return res
             },
@@ -457,6 +556,36 @@ padding: 4px;
                 this.stopDownload = true
                 this.cancelDownloadObj.abort()
             },
+            // 修改音质功能
+            changeQuality(){
+                const _this = this
+                swal("请选择需要设置的音质，注意：此功能处于测试中，目前高品质仅适用于VIP音频，且部分音频不存在高品质音质。(切换后将刷新页面)", {
+                    buttons: {
+                        low: "低(32kbps)",
+                        mid: "中(64kbps)",
+                        high: "高(128kbps)",
+                    },
+                }).then((value) => {
+                    var setting = GM_getValue('priate_script_xmly_data')
+                    var changeFlag = true
+                    switch (value) {
+                        case "low":
+                            setting.quality = 0;
+                            break;
+                        case "mid":
+                            setting.quality = 1;
+                            break;
+                        case "high":
+                            setting.quality = 2;
+                            break;
+                        default:
+                            changeFlag = false
+                    }
+                    GM_setValue('priate_script_xmly_data', setting)
+                    _this.setting = setting
+                    changeFlag && location.reload()
+                });
+            }
         },
         computed: {
             filterData(){
@@ -471,7 +600,27 @@ padding: 4px;
                 return this.data.filter((item)=>{
                     return item.isDownloaded == false
                 })
+            },
+            qualityStr(){
+                var str;
+                switch(this.setting.quality){
+                    case 0:
+                        str = '低'
+                        break;
+                    case 1:
+                        str = '中'
+                        break;
+                    case 2:
+                        str = '高'
+                        break;
+                    default:
+                        str = '未知'
+                        break;
+
+                }
+                return str
             }
+
         }
     })
     //设置div可拖动
