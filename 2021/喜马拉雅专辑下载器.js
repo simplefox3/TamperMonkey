@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         喜马拉雅专辑下载器
-// @version      0.0.8
+// @version      1.0.0
 // @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，多线程下载，链接导出等功能，直接下载M4A文件。
 // @author       Priate
 // @match        *://www.ximalaya.com/*
@@ -276,7 +276,7 @@ padding: 4px;
                 all_li.forEach((item)=>{
                     const item_a =  item.querySelector('a');
                     const music = {
-                        id : item_a.href.split('/')[5],
+                        id : item_a.href.split('/')[item_a.href.split('/').length - 1],
                         title : item_a.title,
                         isDownloading : false,
                         isDownloaded : false,
@@ -324,7 +324,7 @@ padding: 4px;
                     for(var num = 0; num < all_li.length; num++) {
                         var li = all_li[num]
                         const item_a = li.querySelector('a');
-                        const id = item_a.href.split('/')[5]
+                        const id = item_a.href.split('/')[item_a.href.split('/').length - 1]
                         if(id == item.id){
                             li.querySelector('div.all-icon').click()
                             while(!res){
