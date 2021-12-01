@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         喜马拉雅专辑下载器
-// @version      1.0.1
-// @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，多线程下载，链接导出等功能，直接下载M4A文件。
+// @version      1.0.3
+// @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，支持修改音质，链接导出等功能，直接下载M4A文件。
 // @author       Priate
 // @match        *://www.ximalaya.com/*
 // @grant        GM_xmlhttpRequest
@@ -85,10 +85,10 @@
         priate_script_div.innerHTML = `
 <div id="priate_script_div">
 <div>
-<b style='font-size:30px; margin: 0 0'>喜马拉雅下载器</b><p style='margin: 0 0'>by <a href="https://donate.virts.app/#sponsor" target="_blank" style='color:#337ab7'>Priate</a> | v<a href="//greasyfork.org/zh-CN/scripts/435495" target="_blank" style='color:#337ab7'>1.0.0</a> | 音质 : <a @click='changeQuality' style='color:#337ab7'>{{qualityStr}}</a> </p>
+<b style='font-size:30px; margin: 0 0'>喜马拉雅下载器</b><p style='margin: 0 0'>by <a href="https://donate.virts.app/#sponsor" target="_blank" style='color:#337ab7'>Priate</a> | v <a href="//greasyfork.org/zh-CN/scripts/435495" target="_blank" style='color:#CC0F35'>{{version}}</a> | 音质 : <a @click='changeQuality' :style='"color:" + qualityColor'>{{qualityStr}}</a> </p>
 <button v-show="!isDownloading" @click="loadMusic">{{filterData.length > 0 ? '重载数据' : '加载数据'}}</button>
 <button id='readme' @click="downloadAllMusics" v-show="!isDownloading && (musicList.length > 0)">下载所选</button>
-<button @click="copyAllMusicURL" v-show="!isDownloading && (musicList.length > 0)">导出地址</button>
+<button @click="copyAllMusicURL" v-show="!isDownloading && (musicList.length > 0)">导出地址 <b v-show="copyMusicURLProgress">{{copyMusicURLProgress}}%</b></button>
 <button @click="cancelDownload" v-show="isDownloading">取消下载</button>
 </br>
 <table v-show="filterData.length > 0">
@@ -256,15 +256,14 @@ color: #55ACEE;
     function initQuality(){
         ah.proxy({
             onRequest: (config, handler) => {
-                if (config.url.indexOf("audiopay.cos.tx.xmcdn.com") != -1) {
-                    console.log(config.url)
-                }
                 handler.next(config);
             },
             onError: (err, handler) => {
                 handler.next(err)
             },
             onResponse: (response, handler) => {
+                const setting = GM_getValue('priate_script_xmly_data')
+                // hook返回数据
                 if (response.config.url.indexOf("mobile.ximalaya.com/mobile-playpage/track/v3/baseInfo") != -1) {
                     const setting = GM_getValue('priate_script_xmly_data')
                     const data = JSON.parse(response.response)
@@ -282,27 +281,18 @@ color: #55ACEE;
                     })
                     response.response = JSON.stringify(data)
                 }
+                // hook普通音频获取高品质，实际上只需删除获取到的src即可
+                if (setting.quality == 2 && response.config.url.indexOf("www.ximalaya.com/revision/play/v1/audio") != -1) {
+                    const setting = GM_getValue('priate_script_xmly_data')
+                    var resp = JSON.parse(response.response)
+                    var data = resp.data
+                    delete data.src
+                    response.response = JSON.stringify(resp)
+                }
                 handler.next(response)
             }
         })
         unsafeWindow.XMLHttpRequest = XMLHttpRequest
-    }
-
-    // 获取当前时间
-    function getNowFormatDate() {
-        var date = new Date();
-        var seperator1 = "-";
-        var seperator2 = ":";
-        var month = date.getMonth() + 1;
-        var strDate = date.getDate();
-        if (month >= 1 && month <= 9) {
-            month = "0" + month;
-        }
-        if (strDate >= 0 && strDate <= 9) {
-            strDate = "0" + strDate;
-        }
-        var currentdate = month + seperator1 + strDate + " " + date.getHours() + seperator2 + date.getMinutes()
-        return currentdate;
     }
 
     //初始化脚本设置
@@ -312,7 +302,7 @@ color: #55ACEE;
     // 初始化音质修改
     initQuality()
 
-    // 第一种获取musicURL的方式，任意用户均可获得
+    // 第一种获取musicURL的方式，任意用户均可获得，不可获得VIP音频
     async function getSimpleMusicURL1(item){
         var res = null
         if(item.url){
@@ -329,20 +319,19 @@ color: #55ACEE;
                     if(resp.ret === 0){
                         const setting = GM_getValue('priate_script_xmly_data')
                         const trackInfo = resp.data.playpage.trackInfo;
-                        console.log(trackInfo)
                         if(setting.quality == 0){
                             res = trackInfo.playUrl32
-                        }else{
+                        }else if(setting.quality == 1){
                             res = trackInfo.playUrl64
                         }
-                        res = res || trackInfo.downloadUrl
+                        // res = res || trackInfo.downloadUrl
                     }
                 }
             });
         }
         return res
     }
-    // 第二种获取musicURL的方式，任意用户均可获得
+    // 第二种获取musicURL的方式，任意用户均可获得，不可获得VIP音频
     async function getSimpleMusicURL2(item){
         var res = null
         if(item.url){
@@ -405,6 +394,8 @@ color: #55ACEE;
     var vm = new Vue({
         el: '#priate_script_div',
         data: {
+            version : "1.0.3",
+            copyMusicURLProgress : 0,
             setting: GM_getValue('priate_script_xmly_data'),
             data: [],
             musicList: [],
@@ -527,10 +518,13 @@ color: #55ACEE;
                 await this.sequenceDownload(0, this.musicList)
             },
             async copyAllMusicURL(){
+                this.copyMusicURLProgress = 0
                 var res = []
                 for(var num = 0; num < this.musicList.length; num++) {
                     var item = this.musicList[num];
                     const url = await this.getMusicURL(item)
+                    await Sleep(0.01)
+                    this.copyMusicURLProgress = Math.round((num + 1) / this.musicList.length * 10000) / 100.00;
                     res.push(url)
                 }
                 GM_setClipboard(res.join('\n'))
@@ -539,6 +533,7 @@ color: #55ACEE;
                     buttons: false,
                     timer: 1000,
                 });
+                this.copyMusicURLProgress = 0
             },
             selectAllMusic(){
                 if(this.musicList.length == this.notDownloadedData.length){
@@ -559,11 +554,11 @@ color: #55ACEE;
             // 修改音质功能
             changeQuality(){
                 const _this = this
-                swal("请选择需要设置的音质，注意：此功能处于测试中，目前高品质仅适用于VIP音频，且部分音频不存在高品质音质。(切换后将刷新页面)", {
+                swal("请选择需要设置的音质，注意：此功能处于测试中，超高音质仅登陆后VIP可用，且部分音频不存在超高音质。(切换后将刷新页面)", {
                     buttons: {
-                        low: "低(32kbps)",
-                        mid: "中(64kbps)",
-                        high: "高(128kbps)",
+                        low: "标准",
+                        mid: "高清",
+                        high: "超高(仅VIP)",
                     },
                 }).then((value) => {
                     var setting = GM_getValue('priate_script_xmly_data')
@@ -605,13 +600,13 @@ color: #55ACEE;
                 var str;
                 switch(this.setting.quality){
                     case 0:
-                        str = '低'
+                        str = '标准'
                         break;
                     case 1:
-                        str = '中'
+                        str = '高清'
                         break;
                     case 2:
-                        str = '高'
+                        str = '超高'
                         break;
                     default:
                         str = '未知'
@@ -619,6 +614,24 @@ color: #55ACEE;
 
                 }
                 return str
+            },
+            qualityColor(){
+                var color;
+                switch(this.setting.quality){
+                    case 0:
+                        color = '#946C00'
+                        break;
+                    case 1:
+                        color = '#55ACEE'
+                        break;
+                    case 2:
+                        color = '#00947e'
+                        break;
+                    default:
+                        color = '#337ab7'
+                        break;
+                }
+                return color
             }
 
         }
