@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         喜马拉雅专辑下载器
-// @version      1.0.3
+// @version      1.0.4
 // @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，支持修改音质，链接导出等功能，直接下载M4A文件。
 // @author       Priate
 // @match        *://www.ximalaya.com/*
@@ -394,7 +394,7 @@ color: #55ACEE;
     var vm = new Vue({
         el: '#priate_script_div',
         data: {
-            version : "1.0.3",
+            version : "1.0.4",
             copyMusicURLProgress : 0,
             setting: GM_getValue('priate_script_xmly_data'),
             data: [],
@@ -419,7 +419,7 @@ color: #55ACEE;
                     result.push(music)
                 })
                 // 如果没有获取到数据,则判断为单个音频
-                if(result.length == 0 && location.pathname.split('/')[3]){
+                if(result.length == 0 && location.pathname.split('/')[location.pathname.split('/').length - 1]){
                     const music = {
                         id : location.pathname.split('/')[3],
                         title : document.querySelector('h1.title-wrapper').innerText,
@@ -430,11 +430,22 @@ color: #55ACEE;
                     }
                     result.push(music)
                 }
+
+                // 如果仍未获取到数据
+                if(result.length == 0){
+                    swal("未获取到数据，请先选择一个专辑页面并等待页面完全加载！", {
+                        icon: "error",
+                        buttons: false,
+                        timer: 3000,
+                    });
+                }
+
                 this.data = result
                 this.musicList = []
                 this.data.forEach((item)=>{
                     this.musicList.push(item)
                 })
+
             },
             async getMusicURL(item){
                 var res = await getSimpleMusicURL1(item)
