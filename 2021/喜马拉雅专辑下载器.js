@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         喜马拉雅专辑下载器
-// @version      1.0.4
+// @version      1.0.5
 // @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，支持修改音质，链接导出等功能，直接下载M4A文件。
 // @author       Priate
 // @match        *://www.ximalaya.com/*
@@ -25,10 +25,11 @@
 
     // 用户自定义设置
     const global_setting = {
-        // 多线程下载(此选项已废弃,设置无效)
-        multithreading : false,
+        number : false,   // 是否在标题前添加编号 ture-开启 false-关闭
+        offset : 0,      // 标题编号的偏移量(在原有的基础上进行加减，如1则为在原有编号的基础上加1，-3则为在原有编号的基础上减3)
     }
 
+    //以下内容勿修改
     function initSetting(){
         var setting;
         if (!GM_getValue('priate_script_xmly_data')) {
@@ -85,7 +86,11 @@
         priate_script_div.innerHTML = `
 <div id="priate_script_div">
 <div>
-<b style='font-size:30px; margin: 0 0'>喜马拉雅下载器</b><p style='margin: 0 0'>by <a href="https://donate.virts.app/#sponsor" target="_blank" style='color:#337ab7'>Priate</a> | v <a href="//greasyfork.org/zh-CN/scripts/435495" target="_blank" style='color:#CC0F35'>{{version}}</a> | 音质 : <a @click='changeQuality' :style='"color:" + qualityColor'>{{qualityStr}}</a> </p>
+<b style='font-size:30px; margin: 0 0'>喜马拉雅下载器</b>
+<p style='margin: 0 0'>by <a href="https://donate.virts.app/#sponsor" target="_blank" style='color:#337ab7'>Priate</a> |
+v <a href="//greasyfork.org/zh-CN/scripts/435495" target="_blank" style='color:#CC0F35'>{{version}}</a> |
+音质 : <a @click='changeQuality' :style='"color:" + qualityColor'>{{qualityStr}}</a>
+</p>
 <button v-show="!isDownloading" @click="loadMusic">{{filterData.length > 0 ? '重载数据' : '加载数据'}}</button>
 <button id='readme' @click="downloadAllMusics" v-show="!isDownloading && (musicList.length > 0)">下载所选</button>
 <button @click="copyAllMusicURL" v-show="!isDownloading && (musicList.length > 0)">导出地址 <b v-show="copyMusicURLProgress">{{copyMusicURLProgress}}%</b></button>
@@ -394,7 +399,7 @@ color: #55ACEE;
     var vm = new Vue({
         el: '#priate_script_div',
         data: {
-            version : "1.0.4",
+            version : "1.0.5",
             copyMusicURLProgress : 0,
             setting: GM_getValue('priate_script_xmly_data'),
             data: [],
@@ -409,9 +414,12 @@ color: #55ACEE;
                 var result = [];
                 all_li.forEach((item)=>{
                     const item_a =  item.querySelector('a');
+                    const number = parseInt(item.querySelector('span.num').innerText) + global_setting.offset
+                    const title = item_a.title.replaceAll(/\./, '-')
                     const music = {
                         id : item_a.href.split('/')[item_a.href.split('/').length - 1],
-                        title : item_a.title,
+                        number,
+                        title : global_setting.number ? `${number}-${title}` : title,
                         isDownloading : false,
                         isDownloaded : false,
                         progress : 0,
