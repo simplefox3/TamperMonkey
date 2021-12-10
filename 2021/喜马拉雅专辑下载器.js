@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         喜马拉雅专辑下载器
-// @version      1.0.5
-// @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，支持修改音质，链接导出等功能，直接下载M4A文件。
+// @version      1.0.6
+// @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，支持修改音质，链接导出、调用aria2等功能，直接下载M4A，MP3文件。
 // @author       Priate
 // @match        *://www.ximalaya.com/*
 // @grant        GM_xmlhttpRequest
@@ -14,7 +14,7 @@
 // @require      https://cdn.jsdelivr.net/npm/vue@2
 // @require      https://cdn.jsdelivr.net/npm/sweetalert@2.1.2/dist/sweetalert.min.js
 // @require      https://cdn.bootcss.com/jquery/3.3.1/jquery.js
-// @require      https://greasyfork.org/scripts/435476-priate-lib/code/Priate%20Lib.js?version=987980
+// @require      https://greasyfork.org/scripts/435476-priatelib/code/PriateLib.js?version=996927
 // @require      https://unpkg.com/ajax-hook@2.0.3/dist/ajaxhook.min.js
 // @license MIT
 // @namespace https://greasyfork.org/users/219866
@@ -22,11 +22,13 @@
 
 (function() {
     'use strict';
-
     // 用户自定义设置
     const global_setting = {
         number : false,   // 是否在标题前添加编号 ture-开启 false-关闭
         offset : 0,      // 标题编号的偏移量(在原有的基础上进行加减，如1则为在原有编号的基础上加1，-3则为在原有编号的基础上减3)
+        export : 'copy', // 点击“导出数据”按钮时的功能 copy-粘贴到剪切板 aria2-调用aria2jsonrpc下载
+        aria2_wsurl : "ws://127.0.0.1:6800/jsonrpc", // aria2 JSON rpc地址
+        aria2_secret : "", // aria2 rpc-secret 设置的值
     }
 
     //以下内容勿修改
@@ -93,7 +95,7 @@ v <a href="//greasyfork.org/zh-CN/scripts/435495" target="_blank" style='color:#
 </p>
 <button v-show="!isDownloading" @click="loadMusic">{{filterData.length > 0 ? '重载数据' : '加载数据'}}</button>
 <button id='readme' @click="downloadAllMusics" v-show="!isDownloading && (musicList.length > 0)">下载所选</button>
-<button @click="copyAllMusicURL" v-show="!isDownloading && (musicList.length > 0)">导出地址 <b v-show="copyMusicURLProgress">{{copyMusicURLProgress}}%</b></button>
+<button @click="exportAllMusicURL" v-show="!isDownloading && (musicList.length > 0)">导出数据 <b v-show="copyMusicURLProgress">{{copyMusicURLProgress}}%</b></button>
 <button @click="cancelDownload" v-show="isDownloading">取消下载</button>
 </br>
 <table v-show="filterData.length > 0">
@@ -399,7 +401,7 @@ color: #55ACEE;
     var vm = new Vue({
         el: '#priate_script_div',
         data: {
-            version : "1.0.5",
+            version : "1.0.6",
             copyMusicURLProgress : 0,
             setting: GM_getValue('priate_script_xmly_data'),
             data: [],
@@ -553,6 +555,47 @@ color: #55ACEE;
                     timer: 1000,
                 });
                 this.copyMusicURLProgress = 0
+            },
+            async aria2AllMusicURL(){
+                this.copyMusicURLProgress = 0
+                const config = {
+                    wsurl : global_setting.aria2_wsurl,
+                    token : global_setting.aria2_secret
+                }
+                var dir = document.querySelector('h1.title').innerText + '/'
+                dir = dir || Date.parse(new Date()) / 1000 + '/'
+                for(var num = 0; num < this.musicList.length; num++) {
+                    var item = this.musicList[num];
+                    const url = await this.getMusicURL(item)
+                    var ext = url.split('.')[url.split('.').length - 1]
+                    ext = ext.toLowerCase()
+                    if(ext != 'mp3' || ext != 'm4a'){
+                        ext = 'mp3'
+                    }
+                    await Sleep(0.01)
+                    this.copyMusicURLProgress = Math.round((num + 1) / this.musicList.length * 10000) / 100.00;
+                    Aria2(url,dir + item.title + '.' + ext, config)
+                }
+                swal("导出到aria2成功!文件已保存至 " + dir, {
+                    icon: "success",
+                    buttons: false,
+                    timer: 4000,
+                });
+                this.copyMusicURLProgress = 0
+            },
+            async exportAllMusicURL(){
+                switch(global_setting.export){
+                    case 'copy':
+                        await this.copyAllMusicURL();
+                        break;
+                    case "aria2":
+                        await this.aria2AllMusicURL();
+                        break;
+                    default:
+                        break;
+
+                }
+
             },
             selectAllMusic(){
                 if(this.musicList.length == this.notDownloadedData.length){
