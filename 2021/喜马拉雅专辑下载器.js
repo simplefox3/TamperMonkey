@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         喜马拉雅专辑下载器
-// @version      1.0.7
+// @version      1.0.8
 // @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，支持修改音质，链接导出、调用aria2等功能，直接下载M4A，MP3文件。
 // @author       Priate
 // @match        *://www.ximalaya.com/*
@@ -24,7 +24,7 @@
     'use strict';
     // 用户自定义设置
     const global_setting = {
-        number : false,   // 是否在标题前添加编号 ture-开启 false-关闭
+        number : false,   // 是否在标题前添加编号 true-开启 false-关闭
         offset : 0,      // 标题编号的偏移量(在原有的基础上进行加减，如1则为在原有编号的基础上加1，-3则为在原有编号的基础上减3)
         export : 'copy', // 点击“导出数据”按钮时的功能 copy-粘贴到剪切板 aria2-调用aria2jsonrpc下载
         aria2_wsurl : "ws://127.0.0.1:6800/jsonrpc", // aria2 JSON rpc地址
@@ -401,7 +401,7 @@ color: #55ACEE;
     var vm = new Vue({
         el: '#priate_script_div',
         data: {
-            version : "1.0.7",
+            version : "1.0.8",
             copyMusicURLProgress : 0,
             setting: GM_getValue('priate_script_xmly_data'),
             data: [],
