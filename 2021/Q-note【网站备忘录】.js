@@ -9,7 +9,7 @@
 // @grant        GM_getValue
 // @grant        GM_addStyle
 // @grant        GM_setClipboard
-// @require      https://cdn.jsdelivr.net/npm/vue
+// @require      https://cdn.jsdelivr.net/npm/vue@2
 // @icon         https://priate.oss-cn-beijing.aliyuncs.com/products/picture/icon/q-note.png
 // @require      https://cdn.jsdelivr.net/npm/sweetalert@2.1.2/dist/sweetalert.min.js
 // @supportURL   https://greasyfork.org/zh-CN/scripts/421876/feedback
