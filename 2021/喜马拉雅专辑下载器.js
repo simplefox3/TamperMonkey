@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         喜马拉雅专辑下载器
-// @version      1.0.8
+// @version      1.0.9
 // @description  可能是你见过最丝滑的喜马拉雅下载器啦！登录后支持VIP音频下载，支持专辑批量下载，支持修改音质，链接导出、调用aria2等功能，直接下载M4A，MP3文件。
 // @author       Priate
 // @match        *://www.ximalaya.com/*
@@ -26,7 +26,7 @@
     const global_setting = {
         number : false,   // 是否在标题前添加编号 true-开启 false-关闭
         offset : 0,      // 标题编号的偏移量(在原有的基础上进行加减，如1则为在原有编号的基础上加1，-3则为在原有编号的基础上减3)
-        export : 'copy', // 点击“导出数据”按钮时的功能 copy-粘贴到剪切板 aria2-调用aria2jsonrpc下载
+        export : 'url', // 点击“导出数据”按钮时的功能 url-粘贴原始url到剪切板 csv-以csv格式粘贴到剪切板 aria2-调用aria2jsonrpc下载
         aria2_wsurl : "ws://127.0.0.1:6800/jsonrpc", // aria2 JSON rpc地址
         aria2_secret : "", // aria2 rpc-secret 设置的值
     }
@@ -401,7 +401,7 @@ color: #55ACEE;
     var vm = new Vue({
         el: '#priate_script_div',
         data: {
-            version : "1.0.8",
+            version : "1.0.9",
             copyMusicURLProgress : 0,
             setting: GM_getValue('priate_script_xmly_data'),
             data: [],
@@ -556,6 +556,27 @@ color: #55ACEE;
                 });
                 this.copyMusicURLProgress = 0
             },
+            async csvAllMusicURL(){
+                this.copyMusicURLProgress = 0
+                var dir = document.querySelector('h1.title').innerText
+                dir = dir || Date.parse(new Date()) / 1000
+                // var res = ["url,subfolder,filename"]
+                var res = []
+                for(var num = 0; num < this.musicList.length; num++) {
+                    var item = this.musicList[num];
+                    const url = await this.getMusicURL(item)
+                    await Sleep(0.01)
+                    this.copyMusicURLProgress = Math.round((num + 1) / this.musicList.length * 10000) / 100.00;
+                    res.push(`${url},${dir},${item.title}`)
+                }
+                GM_setClipboard(res.join('\n'))
+                swal("复制csv成功!", {
+                    icon: "success",
+                    buttons: false,
+                    timer: 1000,
+                });
+                this.copyMusicURLProgress = 0
+            },
             async aria2AllMusicURL(){
                 this.copyMusicURLProgress = 0
                 const config = {
@@ -585,17 +606,17 @@ color: #55ACEE;
             },
             async exportAllMusicURL(){
                 switch(global_setting.export){
-                    case 'copy':
+                    case 'url':
                         await this.copyAllMusicURL();
                         break;
                     case "aria2":
                         await this.aria2AllMusicURL();
                         break;
+                    case "csv":
+                        await this.csvAllMusicURL();
                     default:
                         break;
-
                 }
-
             },
             selectAllMusic(){
                 if(this.musicList.length == this.notDownloadedData.length){
@@ -659,43 +680,15 @@ color: #55ACEE;
                 })
             },
             qualityStr(){
-                var str;
-                switch(this.setting.quality){
-                    case 0:
-                        str = '标准'
-                        break;
-                    case 1:
-                        str = '高清'
-                        break;
-                    case 2:
-                        str = '超高'
-                        break;
-                    default:
-                        str = '未知'
-                        break;
-
-                }
-                return str
+                var quality = (this.setting.quality >= 0 && this.setting.quality <=2) ? this.setting.quality : 3
+                const str = ["标准", "高清", "超高", "未知"]
+                return str[quality]
             },
             qualityColor(){
-                var color;
-                switch(this.setting.quality){
-                    case 0:
-                        color = '#946C00'
-                        break;
-                    case 1:
-                        color = '#55ACEE'
-                        break;
-                    case 2:
-                        color = '#00947e'
-                        break;
-                    default:
-                        color = '#337ab7'
-                        break;
-                }
-                return color
+                var quality = (this.setting.quality >= 0 && this.setting.quality <=2) ? this.setting.quality : 3
+                const color = ["#946C00", "#55ACEE", "#00947e", "#337ab7"]
+                return color[quality]
             }
-
         }
     })
     //设置div可拖动
