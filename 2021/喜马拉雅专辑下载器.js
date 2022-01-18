@@ -14,7 +14,7 @@
 // @require      https://cdn.jsdelivr.net/npm/vue@2
 // @require      https://cdn.jsdelivr.net/npm/sweetalert@2.1.2/dist/sweetalert.min.js
 // @require      https://cdn.bootcss.com/jquery/3.3.1/jquery.js
-// @require      https://greasyfork.org/scripts/435476-priatelib/code/PriateLib.js?version=1009442
+// @require      https://greasyfork.org/scripts/435476-priatelib/code/PriateLib.js?version=1009847
 // @require      https://unpkg.com/ajax-hook@2.0.3/dist/ajaxhook.min.js
 // @license MIT
 // @namespace https://greasyfork.org/users/219866
